@@ -1,0 +1,133 @@
+/* ==========================================================================
+ DROPZONE (< 15s & <= 60MB) — khung chọn video
+ ========================================================================== */
+.drop-rules-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 9px 14px;
+  margin-bottom: 14px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.drop-rules-banner strong {
+  color: var(--brand-primary);
+  font-weight: 700;
+}
+
+/* Chuyển mượt giữa lời nhắc kéo thả và khung xem trước video */
+.drop-frame {
+  border: 2px dashed var(--border-strong);
+  border-radius: 16px;
+  background: var(--bg-surface-2);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+  outline: none;
+}
+
+.drop-frame:not(.has-video):hover,
+.drop-frame:not(.has-video):focus-visible {
+  border-color: var(--brand-primary);
+  background: color-mix(in srgb, var(--brand-primary) 5%, var(--bg-surface-2));
+  box-shadow: 0 0 24px var(--brand-glow);
+}
+
+.drop-frame.dragover {
+  border-color: var(--brand-primary) !important;
+  background: color-mix(in srgb, var(--brand-primary) 12%, var(--bg-surface-2)) !important;
+  transform: scale(0.995);
+  box-shadow: 0 0 32px var(--brand-glow);
+}
+
+.drop-frame.has-video {
+  border-style: solid;
+  border-color: var(--border-subtle);
+  background: var(--bg-surface);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.drop-idle-view {
+  padding: 38px 24px;
+  text-align: center;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.drop-idle-view:hover .drop-icon-wrap {
+  transform: translateY(-3px) scale(1.05);
+}
+
+.drop-active-view {
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.3s ease;
+}
+
+.drop-icon-wrap {
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+  color: var(--brand-primary);
+  transition: transform 0.25s ease;
+}
+
+.drop-icon-wrap svg {
+  width: 30px;
+  height: 30px;
+}
+
+.dz-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.dz-sub {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.dz-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.dz-tag {
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dz-tag-highlight {
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+  background: var(--brand-glow);
+}

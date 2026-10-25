@@ -1,0 +1,72 @@
+/* ==========================================================================
+ STATUS CARD, SPINNER & PROGRESS BAR
+ ========================================================================== */
+#status-card {
+  margin-top: 20px;
+  border-color: var(--brand-primary);
+  background: color-mix(in srgb, var(--brand-primary) 4%, var(--bg-surface));
+  animation: fadeIn 0.3s ease;
+}
+
+.status-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.status-spinner-wrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.spinner {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid var(--border-subtle);
+  border-top-color: var(--brand-primary);
+  border-right-color: var(--brand-primary);
+  animation: spin 0.9s cubic-bezier(0.6, 0.2, 0.4, 0.9) infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.status-content h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.status-content p {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.progress-wrap {
+  margin-top: 16px;
+}
+
+.progress-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg-surface-3);
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  width: 35%;
+  border-radius: 999px;
+  background: var(--brand-gradient);
+  box-shadow: 0 0 12px var(--brand-glow);
+  transition: width 0.3s ease;
+}

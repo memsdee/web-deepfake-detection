@@ -1,0 +1,57 @@
+/* ==========================================================================
+ RESPONSIVE ADJUSTMENTS
+ ========================================================================== */
+@media (max-width: 640px) {
+  .main-wrapper {
+    padding: 18px 14px 40px;
+  }
+
+  .navbar {
+    padding: 10px 14px;
+  }
+
+  .nav-container {
+    gap: 10px;
+  }
+
+  .brand {
+    min-width: 0;
+    gap: 10px;
+  }
+
+  .brand-meta {
+    min-width: 0;
+  }
+
+  .brand-meta h1 {
+    font-size: 1rem;
+    line-height: 1.25;
+    white-space: normal;
+  }
+
+  .brand-meta p {
+    font-size: 0.74rem;
+    white-space: normal;
+  }
+
+  .nav-actions {
+    flex: 0 0 auto;
+    gap: 8px;
+  }
+
+  .live-pill {
+    display: none;
+  }
+
+  .glass-card {
+    padding: 18px 14px;
+  }
+
+  .score-val {
+    font-size: 2.2rem;
+  }
+
+  .gauge-legend-row {
+    font-size: 0.72rem;
+  }
+}

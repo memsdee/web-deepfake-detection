@@ -1,0 +1,12 @@
+/* ==========================================================================
+ ĐIỂM VÀO CSS — import theo thứ tự (base khai báo biến/theme trước)
+ ========================================================================== */
+@import url("01-base.css");
+@import url("02-navbar.css");
+@import url("03-layout.css");
+@import url("04-dropzone.css");
+@import url("05-video.css");
+@import url("06-buttons.css");
+@import url("07-status.css");
+@import url("08-result.css");
+@import url("09-responsive.css");

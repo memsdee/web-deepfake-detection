@@ -1,0 +1,130 @@
+/* ==========================================================================
+ BUTTONS
+ ========================================================================== */
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.btn {
+  font-family: var(--font-main);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.2;
+  border-radius: 12px;
+  padding: 13px 22px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
+  cursor: pointer;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn > svg {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--brand-primary);
+  background-color: var(--bg-surface-3);
+  transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary {
+  background: var(--brand-gradient);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 4px 16px var(--brand-glow);
+}
+
+/* Giữ nguyên gradient khi hover: chỉ đổi bóng, không ghi đè background */
+.btn-primary:hover:not(:disabled) {
+  background: var(--brand-gradient);
+  background-color: transparent;
+  border-color: transparent;
+  box-shadow: 0 6px 24px var(--brand-glow);
+  filter: brightness(1.08);
+}
+
+.btn-primary:active:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+.btn-primary:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 3px;
+}
+
+.btn-primary svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Hàng thao tác: 2 nút cùng kích thước, chiếm trọn chiều ngang khung */
+.action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.action-row .btn-action {
+  width: 100%;
+  min-width: 0;
+  padding: 13px 14px;
+  font-size: 0.92rem;
+}
+
+@media (max-width: 420px) {
+  .action-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--border-strong);
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background-color: var(--bg-surface-3);
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+.btn-danger {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}

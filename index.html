@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+
+<head>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Crect%20width%3D%2764%27%20height%3D%2764%27%20rx%3D%2714%27%20fill%3D%27%234f7fe8%27/%3E%3Cpath%20d%3D%27M32%2012l16%206v12c0%2010-7%2018-16%2022-9-4-16-12-16-22V18z%27%20fill%3D%27none%27%20stroke%3D%27white%27%20stroke-width%3D%274%27%20stroke-linejoin%3D%27round%27/%3E%3Cpath%20d%3D%27M24%2032l6%206%2011-12%27%20fill%3D%27none%27%20stroke%3D%27white%27%20stroke-width%3D%274%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27/%3E%3C/svg%3E">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DeepFake Detection — Hệ thống phát hiện Deepfake Video</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+
+  <!-- ========================================================================
+       TOP NAVBAR
+       ======================================================================== -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true">
+          <!-- DeepFake Detection Vision Logo -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            <path d="m9 12 2 2 4-4" />
+          </svg>
+        </div>
+        <div class="brand-meta">
+          <h1>DeepFake Detection </h1>
+          <span class="brand-badge">Vision AI</span>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <!-- Trạng thái thật của backend, cập nhật bởi js/health.js qua GET /api/health -->
+        <div class="live-pill" id="server-status" data-state="checking" role="status" aria-live="polite" title="Đang kiểm tra máy chủ">
+          <span class="live-dot" aria-hidden="true"></span>
+          <span id="server-status-label">Đang kiểm tra…</span>
+        </div>
+        <!-- Theme Switcher -->
+        <button class="theme-toggle-btn" id="theme-btn" type="button" aria-label="Chuyển chế độ sáng/tối"
+          title="Chuyển chế độ sáng/tối">
+          <svg id="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5" />
+            <line x1="12" y1="1" x2="12" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" />
+            <line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================
+       MAIN APPLICATION LAYOUT
+       ======================================================================== -->
+  <main class="main-wrapper">
+
+    <!-- STUDIO GRID -->
+    <div class="workspace-grid">
+
+      <!-- ================= LEFT COLUMN: UPLOAD & VIDEO INSPECTOR ================= -->
+      <div class="column-left">
+
+        <!-- KHUNG CHỌN & XEM TRƯỚC VIDEO (HIỂN THỊ VIDEO TRỰC TIẾP TRONG KHUNG) -->
+        <section class="glass-card" aria-labelledby="step1">
+          <div class="card-header-row">
+            <div class="card-title-group">
+              <span class="card-step-badge">1</span>
+              <h2 class="card-title" id="step1">Chọn &amp; xem trước video</h2>
+            </div>
+            <span class="dz-tag" id="preview-badge">Chờ video</span>
+          </div>
+
+          <!-- KHUNG CHỌN VIDEO (HIỂN THỊ VIDEO NGAY TRONG KHUNG NÀY KHI ĐÃ CHỌN) -->
+          <div class="drop-frame" id="drop-frame">
+            <!-- TRẠNG THÁI 1: CHƯA CÓ VIDEO -->
+            <div id="drop-idle" class="drop-idle-view" tabindex="0" role="button"
+              aria-label="Chọn hoặc kéo thả video vào đây">
+              <div class="drop-icon-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+              </div>
+              <p class="dz-title">Kéo thả video vào đây</p>
+              <p class="dz-sub">hoặc bấm vào khu vực này để chọn tệp tin từ máy tính</p>
+              <div class="dz-badges">
+                <span class="dz-tag dz-tag-highlight">⏱ Thời lượng ≤ 15 giây</span>
+                <span class="dz-tag dz-tag-highlight">📦 Dung lượng ≤ 60 MB</span>
+                <span class="dz-tag">🎞 MP4 · MOV · WEBM</span>
+                <span class="dz-tag">👤 Có khuôn mặt rõ</span>
+              </div>
+            </div>
+
+            <!-- TRẠNG THÁI 2: ĐÃ CHỌN VIDEO (HIỂN THỊ TRỰC TIẾP TRONG KHUNG) -->
+            <div id="drop-active" class="drop-active-view" hidden>
+              <div class="video-container" id="video-wrapper">
+                <div class="scanner-beam" aria-hidden="true"></div>
+                <video id="video" controls playsinline preload="metadata"></video>
+              </div>
+
+              <!-- VIDEO METADATA CHIPS -->
+              <div class="video-meta-bar" id="meta-chips-container"></div>
+
+              <!-- HÀNG NÚT THAO TÁC TRONG KHUNG -->
+              <div class="btn-row action-row">
+                <button class="btn btn-primary btn-action" id="btn-analyze" type="button">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                  <span>Bắt đầu phân tích</span>
+                </button>
+                <button class="btn btn-ghost btn-action" id="btn-reset" type="button">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                  <span>Chọn video khác</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <input id="file-input" type="file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm" hidden>
+
+          <!-- ERROR BOX -->
+          <div id="error-box" role="alert" hidden></div>
+        </section>
+
+      </div>
+
+      <!-- ================= RIGHT COLUMN: STATUS & RESULTS ================= -->
+      <div class="column-right">
+
+        <!-- PLACEHOLDER EMPTY STATE (HIỆN KHI CHƯA CHỌN VIDEO) -->
+        <div class="glass-card" id="ready-placeholder">
+          <div class="card-header-row">
+            <div class="card-title-group">
+              <span class="card-step-badge">⚡</span>
+              <h2 class="card-title">Trung tâm giám định AI</h2>
+            </div>
+            <span class="dz-tag">Trạng thái chờ</span>
+          </div>
+
+          <div class="empty-results-state">
+            <div class="empty-icon-wrap" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 16v-4" />
+                <path d="M12 8h.01" />
+              </svg>
+            </div>
+            <h3>Chưa có video được phân tích</h3>
+            <p>Vui lòng kéo thả hoặc chọn một tệp video (dưới 15 giây, tối đa 60 MB) ở bảng bên trái để khởi chạy tiến
+              trình phát hiện deepfake.</p>
+            <button class="sample-demo-btn" id="btn-demo-data" type="button">
+              👁 Xem thử kết quả mẫu (Demo Mode)
+            </button>
+          </div>
+        </div>
+
+        <!-- STEP 3: TRẠNG THÁI TIẾN TRÌNH (STATUS CARD) -->
+        <section class="glass-card" id="status-card" aria-labelledby="step3" hidden>
+          <div class="card-header-row">
+            <div class="card-title-group">
+              <span class="card-step-badge">3</span>
+              <h2 class="card-title" id="step3">Tiến trình xử lý</h2>
+            </div>
+            <span class="dz-tag" id="status-badge">Đang chạy</span>
+          </div>
+
+          <div class="status-layout">
+            <div class="status-spinner-wrap">
+              <div class="spinner" id="spinner" aria-hidden="true"></div>
+            </div>
+            <div class="status-content">
+              <h3 id="status-title">Đang tải video lên…</h3>
+              <p id="status-sub">Vui lòng không đóng trình duyệt.</p>
+            </div>
+          </div>
+
+          <div class="progress-wrap" id="progress" hidden>
+            <div class="progress-bar">
+              <div class="progress-bar-fill" id="progress-bar-fill"></div>
+            </div>
+          </div>
+
+          <div class="btn-row" id="status-actions" hidden>
+            <button class="btn btn-danger" id="btn-cancel" type="button">Hủy yêu cầu</button>
+          </div>
+          <div id="status-error" role="alert" hidden></div>
+        </section>
+
+        <!-- STEP 2: KẾT QUẢ PHÂN TÍCH (RESULT DASHBOARD) -->
+        <section class="glass-card" id="result" aria-labelledby="step4" hidden>
+          <div class="card-header-row">
+            <div class="card-title-group">
+              <span class="card-step-badge">2</span>
+              <h2 class="card-title" id="step4">Kết quả giám định Deepfake</h2>
+            </div>
+            <span class="dz-tag">Báo cáo AI</span>
+          </div>
+
+          <!-- SCORE & GAUGE METRIC -->
+          <div class="score-card">
+            <div class="score-header">
+              <span class="score-label">Xác suất có dấu hiệu giả mạo</span>
+              <span class="score-val" id="prob-value">--</span>
+            </div>
+
+            <!-- Segmented Gauge Track -->
+            <div class="gauge-track" id="gauge" role="img" aria-label="Thang xác suất">
+              <div class="gauge-seg" id="seg-low" style="flex:35 1 0%"></div>
+              <div class="gauge-seg" id="seg-mid" style="flex:20 1 0%"></div>
+              <div class="gauge-seg" id="seg-high" style="flex:45 1 0%"></div>
+              <div class="gauge-marker" id="gauge-marker" style="left:0%"></div>
+            </div>
+
+            <div class="gauge-legend-row" id="gauge-legend">
+              <span id="legend-low">0%</span>
+              <span id="legend-mid">Ngưỡng 35% – 55%</span>
+              <span id="legend-high">100%</span>
+            </div>
+
+            <div class="threshold-explainer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+              <span id="threshold-note">Dưới 35%: Chưa phát hiện dấu hiệu giả mạo · 35% – 55%: Chưa đủ cơ sở kết luận · Từ 55%: Có dấu hiệu giả mạo.</span>
+            </div>
+          </div>
+
+          <!-- FORENSIC METRICS GRID -->
+          <div class="metrics-grid" id="metrics-grid"></div>
+        </section>
+
+      </div>
+    </div>
+
+  </main>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+
+</html>

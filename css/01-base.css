@@ -1,0 +1,143 @@
+/* ==========================================================================
+ THEME TOKENS & DESIGN SYSTEM
+ ========================================================================== */
+:root {
+  --font-main: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Light Theme */
+  --bg-base: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-2: #f1f5f9;
+  --bg-surface-3: #e2e8f0;
+  --bg-glass: rgba(255, 255, 255, 0.9);
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+
+  --brand-primary: #0284c7;
+  --brand-gradient: linear-gradient(135deg, #0284c7 0%, #3b82f6 100%);
+  --brand-glow: rgba(2, 132, 199, 0.2);
+
+  --safe: #10b981;
+  --safe-bg: #ecfdf5;
+  --safe-border: #a7f3d0;
+  --safe-glow: rgba(16, 185, 129, 0.2);
+
+  --warning: #f59e0b;
+  --warning-bg: #fffbeb;
+  --warning-border: #fde68a;
+  --warning-glow: rgba(245, 158, 11, 0.2);
+
+  --danger: #ef4444;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+  --danger-glow: rgba(239, 68, 68, 0.25);
+
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 6px 18px -3px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 16px 36px -4px rgba(15, 23, 42, 0.12);
+}
+
+[data-theme="dark"] {
+  /* Dark Cyber Obsidian Theme */
+  --bg-base: #090c15;
+  --bg-surface: #101626;
+  --bg-surface-2: #161e33;
+  --bg-surface-3: #1f2a47;
+  --bg-glass: rgba(16, 22, 38, 0.88);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  --brand-primary: #38bdf8;
+  --brand-gradient: linear-gradient(135deg, #38bdf8 0%, #6366f1 100%);
+  --brand-glow: rgba(56, 189, 248, 0.25);
+
+  --safe: #10b981;
+  --safe-bg: rgba(16, 185, 129, 0.14);
+  --safe-border: rgba(16, 185, 129, 0.35);
+  --safe-glow: rgba(16, 185, 129, 0.25);
+
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.14);
+  --warning-border: rgba(245, 158, 11, 0.35);
+  --warning-glow: rgba(245, 158, 11, 0.25);
+
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.16);
+  --danger-border: rgba(239, 68, 68, 0.4);
+  --danger-glow: rgba(239, 68, 68, 0.3);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.7);
+}
+
+/* ==========================================================================
+ GLOBAL RESET & BASE
+ ========================================================================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  position: relative;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Ambient light in background */
+body::before {
+  content: "";
+  position: fixed;
+  top: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1000px;
+  height: 520px;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, rgba(99, 102, 241, 0.06) 50%, transparent 80%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Utility */
+[hidden] {
+  display: none !important;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
