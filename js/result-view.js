@@ -15,6 +15,23 @@ const segLow = $("seg-low"), segMid = $("seg-mid"), segHigh = $("seg-high");
 const legendLow = $("legend-low"), legendMid = $("legend-mid"), legendHigh = $("legend-high");
 const thresholdNote = $("threshold-note");
 const metricsGrid = $("metrics-grid");
+const evidenceSection = $("evidence-section");
+const timelineTrack = $("timeline-track");
+const timelineChips = $("timeline-chips");
+const heatmapBlock = $("heatmap-block");
+const heatmapBadge = $("heatmap-badge");
+const faceImg = $("evidence-face-img");
+const heatmapBaseImg = $("evidence-heatmap-base");
+const heatmapImg = $("evidence-heatmap-img");
+const opacitySlider = $("heatmap-opacity");
+const opacityVal = $("heatmap-opacity-val");
+const temporalStripWrap = $("temporal-strip-wrap");
+const temporalGrid = $("temporal-grid");
+const videoEl = $("video");
+const faceOverlay = $("face-overlay-box");
+
+let activeClips = [];
+let selectedIdx = -1;
 
 const LEVEL_COLOR = { low: "--safe", mid: "--warning", high: "--danger" };
 
@@ -49,6 +66,10 @@ export function setThresholds(lo, hi) {
 function metricsOf(result) {
   const list = [];
   if (typeof result.processing_time === "number") list.push({ label: "Thời gian xử lý", value: result.processing_time.toFixed(2) + "s" });
+  if (Array.isArray(result.clips) && result.clips.length > 0) {
+    const suspicious = result.clips.filter((c) => c.prob_fake >= HIGH).length;
+    list.push({ label: "Đoạn nghi vấn", value: suspicious + " / " + result.clips.length + " đoạn" });
+  }
   return list;
 }
 
@@ -88,12 +109,172 @@ export function renderResult(result) {
 
   const metrics = metricsOf(result);
   renderMetrics(metrics);
+  renderEvidence(result.clips);
 
   readyPlaceholder.hidden = true;
   resultCard.hidden = false;
   resultCard.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-export function hideResult() { resultCard.hidden = true; }
+function updateFaceOverlay(clip) {
+  if (!faceOverlay || !videoEl || !Array.isArray(clip.face_box) || clip.face_box.length !== 4) {
+    if (faceOverlay) faceOverlay.hidden = true;
+    return;
+  }
+  const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+  const cw = videoEl.clientWidth, ch = videoEl.clientHeight;
+  if (!vw || !vh || !cw || !ch) {
+    faceOverlay.hidden = true;
+    return;
+  }
+  const scale = Math.min(cw / vw, ch / vh);
+  const rw = vw * scale, rh = vh * scale;
+  const ox = (cw - rw) / 2, oy = (ch - rh) / 2;
+  const [nx, ny, nw, nh] = clip.face_box;
+
+  faceOverlay.style.left = (ox + nx * rw) + "px";
+  faceOverlay.style.top = (oy + ny * rh) + "px";
+  faceOverlay.style.width = (nw * rw) + "px";
+  faceOverlay.style.height = (nh * rh) + "px";
+  faceOverlay.dataset.level = levelOf(clip.prob_fake);
+  faceOverlay.dataset.label = "Nghi vấn " + fmtPct(clip.prob_fake);
+  faceOverlay.hidden = false;
+}
+
+function selectClip(idx, seekVideo) {
+  if (idx < 0 || idx >= activeClips.length) return;
+  selectedIdx = idx;
+  const clip = activeClips[idx];
+
+  timelineTrack.querySelectorAll(".timeline-seg").forEach((n, i) => n.classList.toggle("active", i === idx));
+  timelineChips.querySelectorAll(".clip-chip").forEach((n, i) => n.classList.toggle("active", i === idx));
+
+  if (clip.heatmap_b64 || clip.face_b64) {
+    const baseSrc = clip.face_b64 || clip.heatmap_b64;
+    faceImg.src = baseSrc;
+    if (heatmapBaseImg) heatmapBaseImg.src = baseSrc;
+    heatmapImg.src = clip.heatmap_b64 || baseSrc;
+    heatmapBadge.textContent = clip.t_start.toFixed(1) + "s – " + clip.t_end.toFixed(1) + "s · " + fmtPct(clip.prob_fake);
+    heatmapBlock.hidden = false;
+  } else {
+    heatmapBlock.hidden = true;
+  }
+
+  renderTemporalStrip(clip);
+
+  if (seekVideo && videoEl && videoEl.src) {
+    const t = typeof clip.frame_time === "number" ? clip.frame_time : clip.t_start;
+    seekToFrame(t, clip);
+  } else {
+    updateFaceOverlay(clip);
+  }
+}
+
+function seekToFrame(t, clip) {
+  if (!videoEl || !videoEl.src) return;
+  const applyOverlay = () => updateFaceOverlay(clip);
+  videoEl.pause();
+  if (Math.abs(videoEl.currentTime - t) < 0.05) {
+    applyOverlay();
+  } else {
+    videoEl.addEventListener("seeked", applyOverlay, { once: true });
+    videoEl.currentTime = t;
+  }
+}
+
+function renderTemporalStrip(clip) {
+  if (!temporalStripWrap || !temporalGrid) return;
+  temporalGrid.replaceChildren();
+  const frames = Array.isArray(clip.frames) ? clip.frames : [];
+  if (frames.length === 0) {
+    temporalStripWrap.hidden = true;
+    return;
+  }
+  frames.forEach((f, idx) => {
+    const btn = el("button", "temporal-card");
+    btn.type = "button";
+    btn.title = "Khung #" + (idx + 1) + " (" + f.t.toFixed(2) + "s)";
+    const wrap = el("div", "heatmap-img-wrap");
+    const base = document.createElement("img");
+    base.src = f.face_b64 || f.heatmap_b64;
+    base.alt = "Khung hình " + (idx + 1);
+    const over = document.createElement("img");
+    over.className = "heatmap-overlay-img";
+    over.src = f.heatmap_b64 || f.face_b64;
+    over.alt = "";
+    wrap.append(base, over);
+    btn.append(wrap, el("span", "temporal-time", f.t.toFixed(2) + "s"));
+    btn.addEventListener("click", () => seekToFrame(f.t, clip));
+    temporalGrid.append(btn);
+  });
+  temporalStripWrap.hidden = false;
+}
+
+if (opacitySlider && heatmapBlock) {
+  const syncOpacity = () => {
+    const v = Number(opacitySlider.value);
+    heatmapBlock.style.setProperty("--hm-opacity", String(v / 100));
+    if (opacityVal) opacityVal.textContent = v + "%";
+  };
+  opacitySlider.addEventListener("input", syncOpacity);
+  syncOpacity();
+}
+
+function renderEvidence(clips) {
+  if (!evidenceSection) return;
+  activeClips = Array.isArray(clips) ? clips : [];
+  selectedIdx = -1;
+  timelineTrack.replaceChildren();
+  timelineChips.replaceChildren();
+  if (faceOverlay) faceOverlay.hidden = true;
+
+  if (activeClips.length === 0) {
+    evidenceSection.hidden = true;
+    heatmapBlock.hidden = true;
+    return;
+  }
+
+  let bestIdx = 0;
+  activeClips.forEach((clip, i) => {
+    if (clip.prob_fake > activeClips[bestIdx].prob_fake) bestIdx = i;
+    const lvl = levelOf(clip.prob_fake);
+
+    const seg = el("button", "timeline-seg");
+    seg.type = "button";
+    seg.dataset.level = lvl;
+    seg.title = clip.t_start.toFixed(1) + "s – " + clip.t_end.toFixed(1) + "s: " + fmtPct(clip.prob_fake);
+    seg.setAttribute("aria-label", "Đoạn " + (i + 1) + ": " + seg.title);
+    seg.addEventListener("click", () => selectClip(i, true));
+    timelineTrack.append(seg);
+
+    const chip = el("button", "clip-chip");
+    chip.type = "button";
+    chip.dataset.level = lvl;
+    chip.append(
+      el("span", "clip-chip-time", clip.t_start.toFixed(1) + "s – " + clip.t_end.toFixed(1) + "s"),
+      el("span", "clip-chip-prob", fmtPct(clip.prob_fake))
+    );
+    chip.addEventListener("click", () => selectClip(i, true));
+    timelineChips.append(chip);
+  });
+
+  evidenceSection.hidden = false;
+  selectClip(bestIdx, false);
+}
+
+if (videoEl) {
+  videoEl.addEventListener("play", () => {
+    if (faceOverlay) faceOverlay.hidden = true;
+  });
+}
+
+export function hideResult() {
+  resultCard.hidden = true;
+  if (evidenceSection) evidenceSection.hidden = true;
+  if (heatmapBlock) heatmapBlock.hidden = true;
+  if (faceOverlay) faceOverlay.hidden = true;
+  activeClips = [];
+  selectedIdx = -1;
+}
 
 export function revealPlaceholder() { readyPlaceholder.hidden = false; }

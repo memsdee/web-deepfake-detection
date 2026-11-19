@@ -110,6 +110,7 @@
             <div id="drop-active" class="drop-active-view" hidden>
               <div class="video-container" id="video-wrapper">
                 <div class="scanner-beam" aria-hidden="true"></div>
+                <div class="face-overlay-box" id="face-overlay-box" hidden aria-hidden="true"></div>
                 <video id="video" controls playsinline preload="metadata"></video>
               </div>
 
@@ -251,6 +252,60 @@
 
           <!-- FORENSIC METRICS GRID -->
           <div class="metrics-grid" id="metrics-grid"></div>
+
+          <!-- SUSPICIOUS REGIONS & TIMELINE -->
+          <div class="evidence-section" id="evidence-section" hidden>
+            <div class="evidence-block">
+              <div class="evidence-header">
+                <h3 class="evidence-title">Dòng thời gian nghi vấn</h3>
+                <span class="evidence-hint">Bấm vào từng đoạn để tua video &amp; xem vùng nghi vấn</span>
+              </div>
+              <div class="timeline-track" id="timeline-track" role="list"></div>
+              <div class="timeline-chips" id="timeline-chips"></div>
+            </div>
+
+            <div class="evidence-block" id="heatmap-block" hidden>
+              <div class="evidence-header">
+                <h3 class="evidence-title" id="heatmap-title">Vùng nghi vấn trên khuôn mặt</h3>
+                <span class="dz-tag" id="heatmap-badge">--</span>
+              </div>
+              <div class="heatmap-controls">
+                <label class="opacity-label" for="heatmap-opacity">Độ mờ Heatmap</label>
+                <input class="opacity-slider" id="heatmap-opacity" type="range" min="0" max="100" value="55">
+                <span class="opacity-val" id="heatmap-opacity-val">55%</span>
+              </div>
+              <div class="heatmap-compare">
+                <figure class="heatmap-card">
+                  <div class="heatmap-img-wrap">
+                    <img id="evidence-face-img" alt="Khuôn mặt gốc tại khung hình nghi vấn">
+                  </div>
+                  <figcaption>Khuôn mặt trích xuất</figcaption>
+                </figure>
+                <figure class="heatmap-card">
+                  <div class="heatmap-img-wrap">
+                    <img id="evidence-heatmap-base" alt="">
+                    <img class="heatmap-overlay-img" id="evidence-heatmap-img" alt="Bản đồ nhiệt vùng nghi vấn trên khuôn mặt">
+                  </div>
+                  <figcaption>Bản đồ nhiệt vùng nghi vấn</figcaption>
+                </figure>
+              </div>
+              <div class="heatmap-legend">
+                <span>Ít nghi vấn</span>
+                <div class="heatmap-gradient" aria-hidden="true"></div>
+                <span>Nghi vấn cao</span>
+              </div>
+              <div class="temporal-strip-wrap" id="temporal-strip-wrap" hidden>
+                <div class="evidence-header">
+                  <h4 class="temporal-title">4 khung hình liên tiếp (lưới 2×2 TALL-Swin)</h4>
+                  <span class="evidence-hint">Bấm từng khung để tua video</span>
+                </div>
+                <div class="temporal-grid" id="temporal-grid"></div>
+              </div>
+              <p class="evidence-note">
+                Vùng màu đỏ/vàng thể hiện nơi mô hình TALL-Swin (SmoothGrad) tập trung nhiều nhất khi phát hiện dấu hiệu giả mạo giữa 4 khung hình liên tiếp.
+              </p>
+            </div>
+          </div>
         </section>
 
       </div>
