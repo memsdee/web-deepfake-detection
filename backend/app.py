@@ -188,6 +188,7 @@ async def run_worker(device: str, queue: JobQueue) -> None:
             p = float(raw["prob_fake"])
             timings = raw.get("timings") or {}
             clips = raw.get("clips") or []
+            faces = raw.get("faces") or []
             total = timings.get("total", 0.0)
             result = {
                 "p_fake": p,
@@ -197,6 +198,8 @@ async def run_worker(device: str, queue: JobQueue) -> None:
                 "processing_time": round(float(total), 3),
                 "n_clips": int(raw.get("n_clips", len(clips))),
                 "clips": clips,
+                "faces": faces,
+                "multi_face": bool(raw.get("multi_face", len(faces) > 1)),
             }
         except NoFaceError:
             error, code = MSG_NO_FACE, "no_face"

@@ -81,20 +81,33 @@ export function initDemo() {
   btnDemoData.addEventListener("click", () => {
     showDemoPreview();
     const renderDemo = () => {
-      const clips = DEMO_CLIPS_META.map((m) => {
-        const main = makeDemoImages(m.prob_fake, m.face_box, m.frame_time, 0);
+      const makeFaceClips = (scale, boxOffset) => DEMO_CLIPS_META.map((m) => {
+        const prob = Number(Math.max(0.05, Math.min(0.98, m.prob_fake * scale)).toFixed(4));
+        const box = [
+          Number(Math.min(0.65, m.face_box[0] + boxOffset).toFixed(4)),
+          m.face_box[1], m.face_box[2], m.face_box[3]
+        ];
+        const main = makeDemoImages(prob, box, m.frame_time, 0);
         const frames = [0, 1, 2, 3].map((k) => ({
           t: Number((m.t_start + k * 0.12).toFixed(2)),
-          ...makeDemoImages(m.prob_fake, m.face_box, m.frame_time, (k - 1.5) * 4),
+          ...makeDemoImages(prob, box, m.frame_time, (k - 1.5) * 4),
         }));
-        return { ...m, ...main, frames };
+        return { ...m, prob_fake: prob, face_box: box, ...main, frames };
       });
+      const clips1 = makeFaceClips(1.0, 0);
+      const clips2 = makeFaceClips(0.22, 0.22);
+      const faces = [
+        { id: 1, label: "Khuôn mặt #1", prob_fake: 0.887, n_clips: clips1.length, thumb_b64: clips1[6].face_b64, clips: clips1 },
+        { id: 2, label: "Khuôn mặt #2", prob_fake: 0.184, n_clips: clips2.length, thumb_b64: clips2[0].face_b64, clips: clips2 },
+      ];
       renderResult({
         p_fake: 0.887,
         low: 0.35,
         high: 0.55,
         processing_time: 4.38,
-        clips,
+        clips: clips1,
+        faces,
+        multi_face: true,
       });
     };
     if (video && video.readyState >= 2) {

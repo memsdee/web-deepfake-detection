@@ -15,6 +15,9 @@ const segLow = $("seg-low"), segMid = $("seg-mid"), segHigh = $("seg-high");
 const legendLow = $("legend-low"), legendMid = $("legend-mid"), legendHigh = $("legend-high");
 const thresholdNote = $("threshold-note");
 const metricsGrid = $("metrics-grid");
+const multiFaceSection = $("multi-face-section");
+const multiFaceNote = $("multi-face-note");
+const faceTabs = $("face-tabs");
 const evidenceSection = $("evidence-section");
 const timelineTrack = $("timeline-track");
 const timelineChips = $("timeline-chips");
@@ -30,6 +33,8 @@ const temporalGrid = $("temporal-grid");
 const videoEl = $("video");
 const faceOverlay = $("face-overlay-box");
 
+let activeFaces = [];
+let selectedFaceIdx = -1;
 let activeClips = [];
 let selectedIdx = -1;
 
@@ -66,6 +71,9 @@ export function setThresholds(lo, hi) {
 function metricsOf(result) {
   const list = [];
   if (typeof result.processing_time === "number") list.push({ label: "Thời gian xử lý", value: result.processing_time.toFixed(2) + "s" });
+  if (Array.isArray(result.faces) && result.faces.length > 1) {
+    list.push({ label: "Số khuôn mặt", value: result.faces.length + " người" });
+  }
   if (Array.isArray(result.clips) && result.clips.length > 0) {
     const suspicious = result.clips.filter((c) => c.prob_fake >= HIGH).length;
     list.push({ label: "Đoạn nghi vấn", value: suspicious + " / " + result.clips.length + " đoạn" });
@@ -109,7 +117,7 @@ export function renderResult(result) {
 
   const metrics = metricsOf(result);
   renderMetrics(metrics);
-  renderEvidence(result.clips);
+  renderFaces(result.faces, result.clips);
 
   readyPlaceholder.hidden = true;
   resultCard.hidden = false;
@@ -262,6 +270,63 @@ function renderEvidence(clips) {
   selectClip(bestIdx, false);
 }
 
+function selectFace(idx) {
+  if (idx < 0 || idx >= activeFaces.length) return;
+  selectedFaceIdx = idx;
+  const face = activeFaces[idx];
+  if (faceTabs) {
+    faceTabs.querySelectorAll(".face-tab-card").forEach((btn, i) => {
+      const on = i === idx;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+  }
+  renderEvidence(face.clips);
+}
+
+function renderFaces(faces, fallbackClips) {
+  activeFaces = Array.isArray(faces) ? faces : [];
+  selectedFaceIdx = -1;
+  if (faceTabs) faceTabs.replaceChildren();
+
+  if (!multiFaceSection || !faceTabs || activeFaces.length <= 1) {
+    if (multiFaceSection) multiFaceSection.hidden = true;
+    const clips = activeFaces.length === 1 ? activeFaces[0].clips : fallbackClips;
+    renderEvidence(clips);
+    return;
+  }
+
+  if (multiFaceNote) {
+    multiFaceNote.textContent =
+      "Phát hiện " + activeFaces.length + " khuôn mặt trong video. Chọn từng khuôn mặt bên dưới để xem chi tiết nghi vấn riêng.";
+  }
+
+  activeFaces.forEach((face, i) => {
+    const btn = el("button", "face-tab-card");
+    btn.type = "button";
+    btn.role = "tab";
+    btn.dataset.level = levelOf(face.prob_fake);
+    if (face.thumb_b64) {
+      const img = document.createElement("img");
+      img.className = "face-tab-thumb";
+      img.src = face.thumb_b64;
+      img.alt = face.label || ("Khuôn mặt #" + (i + 1));
+      btn.append(img);
+    }
+    const meta = el("span", "face-tab-meta");
+    meta.append(
+      el("span", "face-tab-name", face.label || ("Khuôn mặt #" + (i + 1))),
+      el("span", "face-tab-prob", fmtPct(face.prob_fake))
+    );
+    btn.append(meta);
+    btn.addEventListener("click", () => selectFace(i));
+    faceTabs.append(btn);
+  });
+
+  multiFaceSection.hidden = false;
+  selectFace(0);
+}
+
 if (videoEl) {
   videoEl.addEventListener("play", () => {
     if (faceOverlay) faceOverlay.hidden = true;
@@ -270,9 +335,12 @@ if (videoEl) {
 
 export function hideResult() {
   resultCard.hidden = true;
+  if (multiFaceSection) multiFaceSection.hidden = true;
   if (evidenceSection) evidenceSection.hidden = true;
   if (heatmapBlock) heatmapBlock.hidden = true;
   if (faceOverlay) faceOverlay.hidden = true;
+  activeFaces = [];
+  selectedFaceIdx = -1;
   activeClips = [];
   selectedIdx = -1;
 }

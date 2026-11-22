@@ -253,6 +253,20 @@
           <!-- FORENSIC METRICS GRID -->
           <div class="metrics-grid" id="metrics-grid"></div>
 
+          <!-- MULTI-FACE SELECTOR (HIỆN KHI CÓ TỪ 2 KHUÔN MẶT TRỞ LÊN) -->
+          <div class="multi-face-section" id="multi-face-section" hidden>
+            <div class="multi-face-banner" role="status">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+              <span id="multi-face-note">Phát hiện nhiều khuôn mặt trong video. Chọn từng khuôn mặt bên dưới để xem chi tiết nghi vấn riêng.</span>
+            </div>
+            <div class="face-tabs" id="face-tabs" role="tablist" aria-label="Danh sách khuôn mặt phát hiện được"></div>
+          </div>
+
           <!-- SUSPICIOUS REGIONS & TIMELINE -->
           <div class="evidence-section" id="evidence-section" hidden>
             <div class="evidence-block">

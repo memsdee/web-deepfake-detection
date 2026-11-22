@@ -259,6 +259,101 @@
 }
 
 /* ==========================================================================
+   MULTI-FACE SELECTOR
+   ========================================================================== */
+.multi-face-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.multi-face-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--warning) 12%, var(--bg-surface-2));
+  border: 1px solid color-mix(in srgb, var(--warning) 40%, var(--border-subtle));
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.multi-face-banner svg {
+  flex-shrink: 0;
+  color: var(--warning);
+}
+
+.face-tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  gap: 10px;
+}
+
+.face-tab-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.face-tab-card:hover {
+  border-color: var(--brand-primary);
+  transform: translateY(-1px);
+}
+
+.face-tab-card.active {
+  border-color: var(--brand-primary);
+  background: color-mix(in srgb, var(--brand-primary) 14%, var(--bg-surface-2));
+  box-shadow: 0 0 0 1px var(--brand-primary);
+}
+
+.face-tab-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #0b1120;
+  border: 1px solid var(--border-subtle);
+}
+
+.face-tab-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.face-tab-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.face-tab-prob {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.face-tab-card[data-level="low"] .face-tab-prob { color: var(--safe); }
+.face-tab-card[data-level="mid"] .face-tab-prob { color: var(--warning); }
+.face-tab-card[data-level="high"] .face-tab-prob { color: var(--danger); }
+
+/* ==========================================================================
    SUSPICIOUS REGIONS: TIMELINE & FACE HEATMAP
    ========================================================================== */
 .evidence-section {
