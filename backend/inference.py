@@ -360,6 +360,14 @@ class InferenceEngine:
                 t0 = time.perf_counter()
                 starts, plan = self._plan(n)
                 frames = self._read_frames(cap, sorted({i for p in plan for i in p}))
+                if not frames:
+                    raise InferenceError("không đọc được frame nào từ video")
+                avail = sorted(frames.keys())
+                # Tránh KeyError khi CAP_PROP_FRAME_COUNT báo dư 1-2 frame (video VFR / ghép)
+                plan = [
+                    [i if i in frames else min(avail, key=lambda j: abs(j - i)) for i in idxs]
+                    for idxs in plan
+                ]
                 frame_boxes = {i: self._face_boxes(f) for i, f in frames.items()}
                 tracks = self._track_faces(frame_boxes)
                 t_detect = time.perf_counter() - t0
