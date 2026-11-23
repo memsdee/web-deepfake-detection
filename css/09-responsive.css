@@ -44,14 +44,110 @@
   }
 
   .glass-card {
-    padding: 18px 14px;
+    padding: 16px 14px;
+    border-radius: 14px;
+  }
+
+  .card-header-row {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .score-card,
+  .evidence-block {
+    padding: 14px;
+    border-radius: 12px;
   }
 
   .score-val {
-    font-size: 2.2rem;
+    font-size: 2rem;
   }
 
   .gauge-legend-row {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
+  }
+
+  .threshold-explainer {
+    align-items: flex-start;
+    font-size: 0.78rem;
+  }
+
+  .threshold-explainer svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .metric-card {
+    padding: 12px;
+  }
+
+  .metric-number {
+    font-size: 1.15rem;
+  }
+
+  .multi-face-banner {
+    align-items: flex-start;
+    font-size: 0.78rem;
+    padding: 10px 12px;
+  }
+
+  .multi-face-banner svg {
+    margin-top: 2px;
+  }
+
+  .face-tabs {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .face-picker-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .timeline-chips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .heatmap-compare {
+    gap: 8px;
+  }
+
+  .heatmap-controls {
+    flex-wrap: wrap;
+    gap: 6px 10px;
+  }
+
+  .temporal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .action-row {
+    flex-direction: column;
+  }
+
+  .action-row .btn-action {
+    width: 100%;
+  }
+
+  .meta-chip {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (max-width: 380px) {
+  .heatmap-compare {
+    grid-template-columns: 1fr;
   }
 }

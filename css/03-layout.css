@@ -80,14 +80,20 @@
 /* Studio workspace: 2-column grid */
 .workspace-grid {
   display: grid;
-  grid-template-columns: 1.05fr 1fr;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
   gap: 28px;
   align-items: start;
 }
 
+.column-left,
+.column-right {
+  min-width: 0;
+}
+
 @media (max-width: 980px) {
   .workspace-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
   }
 }
 
@@ -97,6 +103,8 @@
   border-radius: 18px;
   box-shadow: var(--shadow-md);
   padding: 24px;
+  min-width: 0;
+  max-width: 100%;
   position: relative;
   overflow: hidden;
   transition: border-color 0.25s ease, box-shadow 0.25s ease;
