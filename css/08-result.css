@@ -259,6 +259,104 @@
 }
 
 /* ==========================================================================
+   FACE PICKER CARD (CHỌN KHUÔN MẶT TRƯỚC KHI PHÂN TÍCH)
+   ========================================================================== */
+.face-picker-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.face-picker-desc {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.78rem;
+}
+
+.face-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.face-pick-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid var(--border-subtle);
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.face-pick-item:hover {
+  transform: translateY(-2px);
+  border-color: var(--brand-primary);
+}
+
+.face-pick-item.selected {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-primary) 28%, transparent);
+}
+
+.face-pick-item img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
+  background: #0b1120;
+}
+
+.face-pick-item:not(.selected) img {
+  opacity: 0.55;
+  filter: grayscale(40%);
+}
+
+.face-pick-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1.5px solid rgba(255, 255, 255, 0.65);
+  color: transparent;
+}
+
+.face-pick-item.selected .face-pick-check {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: #fff;
+}
+
+.face-pick-label {
+  padding: 7px 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ==========================================================================
    MULTI-FACE SELECTOR
    ========================================================================== */
 .multi-face-section {

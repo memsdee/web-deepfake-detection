@@ -3,6 +3,8 @@
  ========================================================================== */
 export const API_BASE = "";                      // "" = cùng origin; đổi sang URL tunnel nếu cần
 export const UPLOAD_FIELD = "file";              // FastAPI: file: UploadFile = File(...)
+export const ENDPOINT_DETECT = "/api/detect-faces";
+export const ENDPOINT_ANALYZE_SELECTED = "/api/analyze-selected";
 export const ENDPOINT_SUBMIT = "/api/analyze";   // POST multipart -> {"job_id": "..."}
 export const ENDPOINT_JOB = "/api/jobs/";        // GET -> {"status","result"|"error",...}
 export const HEALTH_ENDPOINT = "/api/health";    // GET -> {"status":"ok","workers",...}

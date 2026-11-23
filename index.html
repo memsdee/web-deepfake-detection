@@ -177,6 +177,31 @@
           </div>
         </div>
 
+        <!-- STEP 2A: CHỌN KHUÔN MẶT CẦN PHÂN TÍCH (KHI CÓ >= 2 KHUÔN MẶT) -->
+        <section class="glass-card" id="face-picker-card" aria-labelledby="step-pick" hidden>
+          <div class="card-header-row">
+            <div class="card-title-group">
+              <span class="card-step-badge">2</span>
+              <h2 class="card-title" id="step-pick">Chọn khuôn mặt cần phân tích</h2>
+            </div>
+            <span class="dz-tag dz-tag-highlight" id="face-picker-count">0 khuôn mặt</span>
+          </div>
+
+          <div class="face-picker-toolbar">
+            <p class="face-picker-desc">Chọn 1 hoặc nhiều khuôn mặt bạn muốn hệ thống kiểm tra giả mạo:</p>
+            <button class="btn btn-ghost btn-sm" id="btn-toggle-all-faces" type="button">Bỏ chọn tất cả</button>
+          </div>
+
+          <div class="face-picker-grid" id="face-picker-grid" role="group" aria-label="Danh sách khuôn mặt để chọn"></div>
+
+          <div class="btn-row action-row">
+            <button class="btn btn-primary btn-action" id="btn-analyze-selected" type="button">
+              <span id="btn-analyze-selected-label">Phân tích khuôn mặt đã chọn</span>
+            </button>
+            <button class="btn btn-ghost btn-action" id="btn-cancel-picker" type="button">Hủy</button>
+          </div>
+        </section>
+
         <!-- STEP 2: TRẠNG THÁI TIẾN TRÌNH (STATUS CARD) -->
         <section class="glass-card" id="status-card" aria-labelledby="step2" hidden>
           <div class="card-header-row">

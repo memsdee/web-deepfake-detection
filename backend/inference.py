@@ -28,6 +28,8 @@ MIN_CLIP_RATIO = 0.5
 SECONDARY_MIN_CLIPS = 2
 MIN_FACE_PROB = 0.85
 MAX_FACES = 4
+MAX_DETECT_FACES = 12
+THUMB_SIZE = 160
 VIS_SIZE = 224
 STRIP_SIZE = 128
 SMOOTH_STEPS = 4
@@ -342,62 +344,110 @@ class InferenceEngine:
             "clips": clips_out,
         }, t_crop, t_model
 
-    def predict(self, video_path: str) -> dict:
-        t_all = time.perf_counter()
+    def _extract_video_tracks(self, video_path: str):
+        """Đọc các frame cần thiết, phát hiện & gom track tất cả khuôn mặt hợp lệ."""
         cap = cv2.VideoCapture(video_path)
         try:
-            try:
-                if not cap.isOpened():
-                    raise InferenceError("không mở được video")
-                n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-                fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
-                if n < DURATION:
-                    raise InferenceError("không đọc được số frame của video")
-                duration = n / fps
-                if duration < 2.0:
-                    raise InferenceError("video quá ngắn")
+            if not cap.isOpened():
+                raise InferenceError("không mở được video")
+            n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+            if n < DURATION:
+                raise InferenceError("không đọc được số frame của video")
+            duration = n / fps
+            if duration < 2.0:
+                raise InferenceError("video quá ngắn")
 
-                t0 = time.perf_counter()
-                starts, plan = self._plan(n)
-                frames = self._read_frames(cap, sorted({i for p in plan for i in p}))
-                if not frames:
-                    raise InferenceError("không đọc được frame nào từ video")
-                avail = sorted(frames.keys())
-                # Tránh KeyError khi CAP_PROP_FRAME_COUNT báo dư 1-2 frame (video VFR / ghép)
-                plan = [
-                    [i if i in frames else min(avail, key=lambda j: abs(j - i)) for i in idxs]
-                    for idxs in plan
-                ]
-                frame_boxes = {i: self._face_boxes(f) for i, f in frames.items()}
-                tracks = self._track_faces(frame_boxes)
-                t_detect = time.perf_counter() - t0
-            finally:
-                cap.release()
+            t0 = time.perf_counter()
+            starts, plan = self._plan(n)
+            frames = self._read_frames(cap, sorted({i for p in plan for i in p}))
+            if not frames:
+                raise InferenceError("không đọc được frame nào từ video")
+            avail = sorted(frames.keys())
+            # Tránh KeyError khi CAP_PROP_FRAME_COUNT báo dư 1-2 frame (video VFR / ghép)
+            plan = [
+                [i if i in frames else min(avail, key=lambda j: abs(j - i)) for i in idxs]
+                for idxs in plan
+            ]
+            frame_boxes = {i: self._face_boxes(f) for i, f in frames.items()}
+            tracks = self._track_faces(frame_boxes)
+            t_detect = time.perf_counter() - t0
+        finally:
+            cap.release()
+
+        valid_tracks = []
+        primary_min = MIN_CLIP_RATIO * NUM_CLIPS
+        for tr in tracks:
+            if len(valid_tracks) >= MAX_DETECT_FACES:
+                break
+            valid_clips = sum(1 for idxs in plan if any(tr.get(i) is not None for i in idxs))
+            min_req = primary_min if not valid_tracks else SECONDARY_MIN_CLIPS
+            if valid_clips < min_req:
+                continue
+            valid_tracks.append((tr, valid_clips))
+
+        if not valid_tracks:
+            raise NoFaceError()
+        return frames, plan, duration, fps, valid_tracks, t_detect
+
+    def detect_faces(self, video_path: str) -> list[dict]:
+        """Quét nhanh danh sách khuôn mặt trong video (chưa chạy model phân loại)."""
+        try:
+            frames, _plan, _duration, _fps, valid_tracks, _t_detect = self._extract_video_tracks(video_path)
+            out = []
+            for idx, (tr, n_clips) in enumerate(valid_tracks):
+                f_keys = sorted(tr.keys())
+                rep_f = f_keys[len(f_keys) // 2]
+                rgb = frames[rep_f]
+                bx, by, bs = tr[rep_f]
+                crop = cv2.resize(rgb[by:by + bs, bx:bx + bs], (THUMB_SIZE, THUMB_SIZE), interpolation=cv2.INTER_LINEAR)
+                thumb_b64 = self._encode_jpeg_b64(cv2.cvtColor(crop, cv2.COLOR_RGB2BGR), quality=82)
+                out.append({
+                    "track_id": idx,
+                    "label": f"Khuôn mặt #{idx + 1}",
+                    "n_clips": n_clips,
+                    "thumb_b64": thumb_b64,
+                })
+            return out
+        except (NoFaceError, InferenceError):
+            raise
+        except Exception as e:
+            log.exception("detect_faces lỗi")
+            raise InferenceError(str(e))
+
+    def predict(self, video_path: str, selected_tracks: list[int] | None = None) -> dict:
+        t_all = time.perf_counter()
+        try:
+            frames, plan, duration, fps, valid_tracks, t_detect = self._extract_video_tracks(video_path)
+
+            if selected_tracks is not None:
+                chosen = []
+                seen = set()
+                for tid in selected_tracks:
+                    if isinstance(tid, int) and 0 <= tid < len(valid_tracks) and tid not in seen:
+                        chosen.append((tid, valid_tracks[tid][0]))
+                        seen.add(tid)
+                if not chosen:
+                    chosen = [(i, tr) for i, (tr, _) in enumerate(valid_tracks[:MAX_FACES])]
+            else:
+                chosen = [(i, tr) for i, (tr, _) in enumerate(valid_tracks[:MAX_FACES])]
 
             t_crop_total = 0.0
             t_model_total = 0.0
             faces_out = []
-            primary_min = MIN_CLIP_RATIO * NUM_CLIPS
-            for tr in tracks:
-                if len(faces_out) >= MAX_FACES:
-                    break
-                valid_clips = sum(1 for idxs in plan if any(tr.get(i) is not None for i in idxs))
-                min_req = primary_min if not faces_out else SECONDARY_MIN_CLIPS
-                if valid_clips < min_req:
-                    continue
+            for tid, tr in chosen:
                 res, tc, tm = self._predict_track(frames, tr, plan, duration, fps)
                 t_crop_total += tc
                 t_model_total += tm
                 if res is not None:
+                    res["id"] = tid + 1
+                    res["label"] = f"Khuôn mặt #{tid + 1}"
                     faces_out.append(res)
 
             if not faces_out:
                 raise NoFaceError()
 
             faces_out.sort(key=lambda f: f["prob_fake"], reverse=True)
-            for idx, f in enumerate(faces_out, 1):
-                f["id"] = idx
-                f["label"] = f"Khuôn mặt #{idx}"
             top = faces_out[0]
         except (NoFaceError, InferenceError):
             raise

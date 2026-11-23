@@ -2,7 +2,7 @@
  GỬI VIDEO & POLLING KẾT QUẢ
  ========================================================================== */
 import {
-  API_BASE, UPLOAD_FIELD, ENDPOINT_SUBMIT, ENDPOINT_JOB,
+  API_BASE, UPLOAD_FIELD, ENDPOINT_DETECT, ENDPOINT_ANALYZE_SELECTED, ENDPOINT_JOB,
   STATUS, MAX_MB, MAX_SECONDS, POLL_MS, CLIENT_TIMEOUT_MS, RESULT_TTL_MIN
 } from "./config.js";
 import { showStatus, failStatus, hideStatus, setProgressFromUpload } from "./status-ui.js";
@@ -13,10 +13,12 @@ const RETRY_429_MS = 3000;
 const MAX_RETRY_429 = 12;
 
 let onUploadingChange = () => { };
+let onFacesDetected = () => { };
 let xhr = null, pollTimer = null, retryTimer = null, deadline = 0, jobId = null;
-let pendingFile = null, pendingErrorBox = null, retryCount = 0;
+let pendingSession = null, retryCount = 0;
 
 export function setUploadingHook(fn) { onUploadingChange = fn; }
+export function setFacesDetectedHook(fn) { onFacesDetected = fn; }
 
 function xhrBodySafe(x) {
   try { return x && x.response; } catch (_) { return null; }
@@ -39,25 +41,18 @@ function clearRetry() {
 
 export function submit(file, errorBox) {
   if (xhr || retryTimer) return;
-  pendingFile = file;
-  pendingErrorBox = errorBox;
+  pendingSession = null;
   retryCount = 0;
   hideResult();
   hideError(errorBox);
-  sendUpload();
-}
-
-function sendUpload() {
-  if (!pendingFile) return;
-  clearRetry();
   onUploadingChange(true);
-  showStatus("Đang tải video lên máy chủ…", "Vui lòng giữ kết nối ổn định.", true, 15);
+  showStatus("Đang tải video & quét khuôn mặt…", "Vui lòng giữ kết nối ổn định.", true, 15);
 
   const form = new FormData();
-  form.append(UPLOAD_FIELD, pendingFile, pendingFile.name || "video.mp4");
+  form.append(UPLOAD_FIELD, file, file.name || "video.mp4");
 
   xhr = new XMLHttpRequest();
-  xhr.open("POST", API_BASE + ENDPOINT_SUBMIT);
+  xhr.open("POST", API_BASE + ENDPOINT_DETECT);
   xhr.responseType = "json";
   xhr.timeout = 120000;
 
@@ -69,7 +64,7 @@ function sendUpload() {
     if (!xhr) return;
     const req = xhr;
     xhr = null;
-    onUploadResponse(req);
+    onDetectResponse(req);
   });
 
   xhr.addEventListener("timeout", () => {
@@ -81,51 +76,118 @@ function sendUpload() {
   xhr.send(form);
 }
 
-function onUploadResponse(x) {
+function onDetectResponse(x) {
+  if (!x) return;
+  const http = x.status;
+  const data = xhrBodySafe(x);
+
+  if (http >= 200 && http < 300 && data && typeof data.session_id === "string" && Array.isArray(data.faces)) {
+    if (data.faces.length === 1) {
+      submitSelected(data.session_id, [data.faces[0].track_id]);
+      return;
+    }
+    if (data.faces.length > 1) {
+      hideStatus();
+      onUploadingChange(false);
+      onFacesDetected(data.session_id, data.faces);
+      return;
+    }
+    failStatus("Không thể phân tích video", "Không tìm thấy khuôn mặt rõ ràng trong video.");
+  } else if (http === 413) {
+    failStatus("Video quá lớn", "Máy chủ từ chối vì tệp vượt " + MAX_MB + " MB hoặc dài hơn " + MAX_SECONDS + " giây.");
+  } else if (http === 422) {
+    failStatus("Không thể phân tích video", serverMessage(x) || "Không tìm thấy khuôn mặt rõ ràng trong video.");
+  } else if (http === 404) {
+    failStatus("Không tìm thấy API", "Địa chỉ API không đúng hoặc máy chủ chưa sẵn sàng.");
+  } else if (http >= 500) {
+    failStatus("Lỗi máy chủ nội bộ", "Máy chủ gặp sự cố khi quét video. Vui lòng kiểm tra log backend.");
+  } else if (http === 0) {
+    failStatus("Mất kết nối máy chủ", "Không thể kết nối đến backend API. Hãy đảm bảo server đã chạy.");
+  } else {
+    failStatus("Gửi video thất bại", serverMessage(x) || ("Máy chủ trả về mã HTTP " + http));
+  }
+  onUploadingChange(false);
+}
+
+export function submitSelected(sessionId, trackIds) {
+  if (!sessionId || xhr || retryTimer) return;
+  pendingSession = { session_id: sessionId, track_ids: Array.isArray(trackIds) ? trackIds : [] };
+  retryCount = 0;
+  hideResult();
+  sendAnalyzeSelected();
+}
+
+function sendAnalyzeSelected() {
+  if (!pendingSession) return;
+  clearRetry();
+  onUploadingChange(true);
+  showStatus("Đang gửi yêu cầu phân tích…", "Đang đưa các khuôn mặt đã chọn vào hàng chờ.", true, 35);
+
+  xhr = new XMLHttpRequest();
+  xhr.open("POST", API_BASE + ENDPOINT_ANALYZE_SELECTED);
+  xhr.setRequestHeader("Content-Type", "application/json");
+  xhr.responseType = "json";
+  xhr.timeout = 60000;
+
+  xhr.addEventListener("loadend", () => {
+    if (!xhr) return;
+    const req = xhr;
+    xhr = null;
+    onAnalyzeResponse(req);
+  });
+
+  xhr.addEventListener("timeout", () => {
+    xhr = null;
+    onUploadingChange(false);
+    failStatus("Quá hạn gửi yêu cầu", "Máy chủ không phản hồi. Vui lòng thử lại.");
+  });
+
+  xhr.send(JSON.stringify(pendingSession));
+}
+
+function onAnalyzeResponse(x) {
   if (!x) return;
   const http = x.status;
   const data = xhrBodySafe(x);
 
   if (http >= 200 && http < 300) {
     if (data && typeof data === "object" && typeof data.job_id === "string") {
-      pendingFile = null;
-      pendingErrorBox = null;
+      pendingSession = null;
       retryCount = 0;
       jobId = data.job_id;
       deadline = Date.now() + CLIENT_TIMEOUT_MS;
       const posText = typeof data.queue_position === "number" ? (" · Vị trí hàng chờ: #" + data.queue_position) : "";
-      showStatus("Đang xếp hàng chờ xử lý…", "Mã nhiệm vụ #" + jobId.slice(0, 8) + posText, true, 40);
+      showStatus("Đang xếp hàng chờ xử lý…", "Mã nhiệm vụ #" + jobId.slice(0, 8) + posText, true, 45);
       pollNow();
       return;
     }
     failStatus("Phản hồi bất thường", "Máy chủ không trả về Job ID hợp lệ.");
-  } else if (http === 413) {
-    failStatus("Video quá lớn", "Máy chủ từ chối vì tệp vượt " + MAX_MB + " MB hoặc dài hơn " + MAX_SECONDS + " giây.");
   } else if (http === 429) {
-    if (pendingFile && retryCount < MAX_RETRY_429) {
+    if (pendingSession && retryCount < MAX_RETRY_429) {
       retryCount += 1;
       showStatus(
         "Hàng chờ đang đầy — đang tự động thử lại…",
         "Sẽ tự gửi lại sau " + (RETRY_429_MS / 1000) + " giây (lần " + retryCount + "/" + MAX_RETRY_429 + ").",
         true,
-        25
+        30
       );
       retryTimer = setTimeout(() => {
         retryTimer = null;
-        sendUpload();
+        sendAnalyzeSelected();
       }, RETRY_429_MS);
       return;
     }
     failStatus("Máy chủ đang bận", serverMessage(x) || "Đang có video chờ xử lý. Vui lòng thử lại sau giây lát.");
   } else if (http === 404) {
-    failStatus("Không tìm thấy API", "Địa chỉ API không đúng hoặc máy chủ chưa sẵn sàng.");
+    failStatus("Phiên đã hết hạn", serverMessage(x) || "Phiên chọn khuôn mặt đã hết hạn. Vui lòng bấm phân tích lại.");
   } else if (http >= 500) {
     failStatus("Lỗi máy chủ nội bộ", "Máy chủ gặp sự cố khi xử lý video. Vui lòng kiểm tra log backend.");
   } else if (http === 0) {
     failStatus("Mất kết nối máy chủ", "Không thể kết nối đến backend API. Hãy đảm bảo server đã chạy.");
   } else {
-    failStatus("Gửi video thất bại", serverMessage(x) || ("Máy chủ trả về mã HTTP " + http));
+    failStatus("Gửi yêu cầu thất bại", serverMessage(x) || ("Máy chủ trả về mã HTTP " + http));
   }
+  pendingSession = null;
   onUploadingChange(false);
 }
 
@@ -192,8 +254,7 @@ export function cancel() {
   abortUpload();
   onUploadingChange(false);
   jobId = null;
-  pendingFile = null;
-  pendingErrorBox = null;
+  pendingSession = null;
   retryCount = 0;
   return wasRunning;
 }

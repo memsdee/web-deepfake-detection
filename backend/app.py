@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import Body, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -34,6 +34,7 @@ LOW, HIGH = 0.35, 0.55              # ngưỡng tạm, phải hiệu chỉnh tr�
 MAX_QUEUED = 3                      # job ĐANG CHỜ tối đa (không tính đang xử lý)
 QUEUE_FULL_RETRY_AFTER = 30         # giây, header Retry-After khi 429
 RESULT_TTL_SECONDS = 10 * 60        # giữ kết quả 10 phút sau khi job kết thúc
+SESSION_TTL_SECONDS = 5 * 60        # giữ phiên chọn khuôn mặt tối đa 5 phút
 CLEANUP_INTERVAL = 30               # chu kỳ dọn job hết hạn (giây)
 DEVICE_ENV = "DFD_STUB"             # DFD_STUB=1 -> luôn dùng stub trên CPU
 DEFAULT_PORT = 8000
@@ -58,12 +59,49 @@ log = logging.getLogger("dfd")
 class Job:
     id: str
     path: str                       # file video tạm, xoá ngay sau predict()
+    selected_tracks: list[int] | None = None
     status: str = STATUS_QUEUED
     result: dict | None = None
     error: str | None = None
     error_code: str | None = None
     finished_at: float | None = None
     meta: dict = field(default_factory=dict)
+
+
+@dataclass
+class FaceSession:
+    id: str
+    path: str
+    faces: list[dict]
+    created_at: float
+    meta: dict = field(default_factory=dict)
+
+
+class SessionStore:
+    """Lưu tạm video đã quét khuôn mặt chờ người dùng chọn mặt cần phân tích."""
+
+    def __init__(self, ttl_seconds: int):
+        self._ttl = ttl_seconds
+        self._items: dict[str, FaceSession] = {}
+        self._lock = asyncio.Lock()
+
+    async def put(self, sess: FaceSession) -> None:
+        async with self._lock:
+            self._items[sess.id] = sess
+
+    async def pop(self, sess_id: str) -> FaceSession | None:
+        async with self._lock:
+            return self._items.pop(sess_id, None)
+
+    async def purge_expired(self) -> int:
+        now = time.time()
+        async with self._lock:
+            expired = [sid for sid, s in self._items.items() if now - s.created_at > self._ttl]
+            for sid in expired:
+                s = self._items.pop(sid, None)
+                if s and s.path:
+                    validation.safe_remove(s.path)
+            return len(expired)
 
 
 class JobQueue:
@@ -184,7 +222,7 @@ async def run_worker(device: str, queue: JobQueue) -> None:
             continue
         result = error = code = None
         try:
-            raw = await asyncio.to_thread(engine.predict, job.path)
+            raw = await asyncio.to_thread(engine.predict, job.path, job.selected_tracks)
             p = float(raw["prob_fake"])
             timings = raw.get("timings") or {}
             clips = raw.get("clips") or []
@@ -212,11 +250,12 @@ async def run_worker(device: str, queue: JobQueue) -> None:
         await queue.finish(job, result, error, code)
 
 
-async def cleanup_loop(queue: JobQueue) -> None:
+async def cleanup_loop(queue: JobQueue, sessions: SessionStore) -> None:
     while True:
         await asyncio.sleep(CLEANUP_INTERVAL)
         try:
             await queue.purge_expired()
+            await sessions.purge_expired()
         except Exception:
             log.exception("cleanup failed")
 
@@ -237,6 +276,7 @@ def clean_tmp_dir() -> None:
 @dataclass
 class State:
     queue: JobQueue | None = None
+    sessions: SessionStore | None = None
     workers: list[asyncio.Task] = field(default_factory=list)
     cleanup: asyncio.Task | None = None
 
@@ -259,11 +299,12 @@ async def lifespan(app: FastAPI):
     devices = factory.build()                 # lỗi ở đây -> app không khởi động
     log.info("inference engine ready: %s (stub=%s)", devices, factory.stub)
     state.queue = JobQueue(MAX_QUEUED)
+    state.sessions = SessionStore(SESSION_TTL_SECONDS)
     state.workers = [asyncio.create_task(run_worker(d, state.queue), name=f"worker-{d}")
                      for d in devices]
     for t in state.workers:
         t.add_done_callback(cleanup_done)
-    state.cleanup = asyncio.create_task(cleanup_loop(state.queue), name="cleanup")
+    state.cleanup = asyncio.create_task(cleanup_loop(state.queue, state.sessions), name="cleanup")
     try:
         yield
     finally:
@@ -287,6 +328,66 @@ async def sample_video():
     if not path.is_file():
         raise HTTPException(404, "Không có video mẫu")
     return FileResponse(path, media_type="video/mp4")
+
+
+@app.post("/api/detect-faces")
+async def detect_faces(request: Request, file: UploadFile = File(...)):
+    """Quét nhanh tất cả khuôn mặt trong video để người dùng chọn mặt cần phân tích."""
+    path = await validation.save_upload(file)
+    try:
+        try:
+            await validation.validate_video(path)
+        except FileNotFoundError:
+            log.error("ffprobe không tồn tại trên máy chủ")
+            raise HTTPException(503, MSG_FFPROBE_MISSING)
+        engine = factory.engines[factory.devices[0]]
+        try:
+            faces = await asyncio.to_thread(engine.detect_faces, path)
+        except NoFaceError:
+            raise HTTPException(422, MSG_NO_FACE)
+        except Exception as e:
+            log.error("detect_faces failed\n%s", traceback.format_exc())
+            raise HTTPException(422, str(e) or MSG_INTERNAL)
+        sess = FaceSession(
+            id=uuid.uuid4().hex,
+            path=path,
+            faces=faces,
+            created_at=time.time(),
+            meta={
+                "filename": file.filename,
+                "client": request.client.host if request.client else None,
+            },
+        )
+        await state.sessions.put(sess)
+        return {"session_id": sess.id, "faces": faces}
+    except BaseException:
+        validation.safe_remove(path)
+        raise
+
+
+@app.post("/api/analyze-selected", status_code=202)
+async def analyze_selected(payload: dict = Body(...)):
+    """Đưa các khuôn mặt người dùng đã chọn từ phiên detect-faces vào hàng chờ xử lý."""
+    sess_id = payload.get("session_id")
+    if not isinstance(sess_id, str) or not sess_id:
+        raise HTTPException(400, "Thiếu mã phiên quét khuôn mặt.")
+    raw_ids = payload.get("track_ids")
+    track_ids = None
+    if isinstance(raw_ids, list) and raw_ids:
+        track_ids = [int(x) for x in raw_ids if isinstance(x, int)]
+
+    sess = await state.sessions.pop(sess_id)
+    if sess is None or not os.path.exists(sess.path):
+        raise HTTPException(404, "Phiên chọn khuôn mặt đã hết hạn. Vui lòng quét lại video.")
+
+    job = Job(id=uuid.uuid4().hex, path=sess.path, selected_tracks=track_ids, meta=sess.meta)
+    position = await state.queue.submit(job)
+    if position is None:
+        # Trả lại session để client có thể thử lại (429 auto-retry)
+        await state.sessions.put(sess)
+        raise HTTPException(429, "Hệ thống đang bận, vui lòng thử lại sau.",
+                            headers={"Retry-After": str(QUEUE_FULL_RETRY_AFTER)})
+    return {"job_id": job.id, "queue_position": position}
 
 
 @app.post("/api/analyze", status_code=202)
