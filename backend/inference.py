@@ -393,12 +393,13 @@ class InferenceEngine:
     def detect_faces(self, video_path: str) -> list[dict]:
         """Quét nhanh danh sách khuôn mặt trong video (chưa chạy model phân loại)."""
         try:
-            frames, _plan, _duration, _fps, valid_tracks, _t_detect = self._extract_video_tracks(video_path)
+            frames, _plan, _duration, fps, valid_tracks, _t_detect = self._extract_video_tracks(video_path)
             out = []
             for idx, (tr, n_clips) in enumerate(valid_tracks):
                 f_keys = sorted(tr.keys())
                 rep_f = f_keys[len(f_keys) // 2]
                 rgb = frames[rep_f]
+                H, W = rgb.shape[:2]
                 bx, by, bs = tr[rep_f]
                 crop = cv2.resize(rgb[by:by + bs, bx:bx + bs], (THUMB_SIZE, THUMB_SIZE), interpolation=cv2.INTER_LINEAR)
                 thumb_b64 = self._encode_jpeg_b64(cv2.cvtColor(crop, cv2.COLOR_RGB2BGR), quality=82)
@@ -406,6 +407,8 @@ class InferenceEngine:
                     "track_id": idx,
                     "label": f"Khuôn mặt #{idx + 1}",
                     "n_clips": n_clips,
+                    "frame_time": round(rep_f / fps, 2),
+                    "face_box": [round(bx / W, 4), round(by / H, 4), round(bs / W, 4), round(bs / H, 4)],
                     "thumb_b64": thumb_b64,
                 })
             return out
