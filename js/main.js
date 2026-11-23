@@ -32,7 +32,41 @@ let pickerFaces = [];
 let pickerSelected = new Set();
 let pickerHoveredTid = null;
 
-function renderPickerOverlays() {
+function toggleFaceSelection(tid) {
+  if (pickerSelected.has(tid)) pickerSelected.delete(tid);
+  else pickerSelected.add(tid);
+  syncPickerUi();
+}
+
+function buildPickerOverlays() {
+  if (!pickerOverlays) return;
+  pickerOverlays.replaceChildren();
+  pickerFaces.forEach((f) => {
+    if (!Array.isArray(f.face_box) || f.face_box.length !== 4) return;
+    const box = el("button", "face-pick-overlay");
+    box.type = "button";
+    box.dataset.tid = String(f.track_id);
+    const tag = el("span", "face-pick-overlay-tag", "#" + (f.track_id + 1));
+    box.append(tag);
+    box.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      pickerHoveredTid = null;
+      toggleFaceSelection(f.track_id);
+    });
+    box.addEventListener("mouseenter", () => {
+      pickerHoveredTid = f.track_id;
+      updatePickerOverlays();
+    });
+    box.addEventListener("mouseleave", () => {
+      pickerHoveredTid = null;
+      updatePickerOverlays();
+    });
+    pickerOverlays.append(box);
+  });
+}
+
+function updatePickerOverlays() {
   if (!pickerOverlays || !videoEl || !pickerFaces.length || facePickerCard.hidden) {
     if (pickerOverlays) pickerOverlays.hidden = true;
     return;
@@ -47,33 +81,30 @@ function renderPickerOverlays() {
   const rw = vw * scale, rh = vh * scale;
   const ox = (cw - rw) / 2, oy = (ch - rh) / 2;
 
-  pickerOverlays.replaceChildren();
-  pickerFaces.forEach((f) => {
-    if (!Array.isArray(f.face_box) || f.face_box.length !== 4) return;
+  const faceById = new Map(pickerFaces.map((f) => [f.track_id, f]));
+  pickerOverlays.querySelectorAll(".face-pick-overlay").forEach((box) => {
+    const tid = Number(box.dataset.tid);
+    const f = faceById.get(tid);
+    if (!f || !Array.isArray(f.face_box) || f.face_box.length !== 4) return;
     const [nx, ny, nw, nh] = f.face_box;
     const topPx = oy + ny * rh;
-    const on = pickerSelected.has(f.track_id);
-    const hov = pickerHoveredTid === f.track_id;
-    const box = el("button", "face-pick-overlay" + (on ? " selected" : "") + (hov ? " hovered" : ""));
-    box.type = "button";
+    const on = pickerSelected.has(tid);
+    const hov = pickerHoveredTid === tid;
+
     box.style.left = (ox + nx * rw) + "px";
     box.style.top = topPx + "px";
     box.style.width = (nw * rw) + "px";
     box.style.height = (nh * rh) + "px";
-    box.title = (f.label || ("Khuôn mặt #" + (f.track_id + 1))) + (on ? " (đang chọn)" : " (bấm để chọn)");
-    const tag = el("span", "face-pick-overlay-tag" + (topPx < 24 ? " inside" : ""), "#" + (f.track_id + 1) + (on ? " ✓" : ""));
-    box.append(tag);
-    box.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      pickerHoveredTid = null;
-      if (pickerSelected.has(f.track_id)) pickerSelected.delete(f.track_id);
-      else pickerSelected.add(f.track_id);
-      syncPickerUi();
-    });
-    box.addEventListener("mouseenter", () => { pickerHoveredTid = f.track_id; renderPickerOverlays(); });
-    box.addEventListener("mouseleave", () => { pickerHoveredTid = null; renderPickerOverlays(); });
-    pickerOverlays.append(box);
+    box.classList.toggle("selected", on);
+    box.classList.toggle("hovered", hov);
+    box.setAttribute("aria-pressed", on ? "true" : "false");
+    box.title = (f.label || ("Khuôn mặt #" + (tid + 1))) + (on ? " (đang chọn — bấm để bỏ chọn)" : " (bấm để chọn)");
+
+    const tag = box.querySelector(".face-pick-overlay-tag");
+    if (tag) {
+      tag.textContent = "#" + (tid + 1) + (on ? " ✓" : "");
+      tag.classList.toggle("inside", topPx < 24);
+    }
   });
   pickerOverlays.hidden = false;
 }
@@ -96,7 +127,7 @@ function syncPickerUi() {
       ? ("Phân tích (" + n + " khuôn mặt)")
       : "Chọn ít nhất 1 khuôn mặt";
   }
-  renderPickerOverlays();
+  updatePickerOverlays();
 }
 
 function hideFacePicker() {
@@ -136,22 +167,21 @@ function showFacePicker(sessionId, faces) {
       el("span", "face-pick-label", f.label || ("Khuôn mặt #" + (f.track_id + 1)))
     );
     btn.addEventListener("click", () => {
-      if (pickerSelected.has(f.track_id)) pickerSelected.delete(f.track_id);
-      else pickerSelected.add(f.track_id);
       if (videoEl && typeof f.frame_time === "number" && videoEl.src) {
         videoEl.pause();
         if (Math.abs(videoEl.currentTime - f.frame_time) > 0.15) {
-          videoEl.addEventListener("seeked", renderPickerOverlays, { once: true });
+          videoEl.addEventListener("seeked", updatePickerOverlays, { once: true });
           videoEl.currentTime = f.frame_time;
         }
       }
-      syncPickerUi();
+      toggleFaceSelection(f.track_id);
     });
-    btn.addEventListener("mouseenter", () => { pickerHoveredTid = f.track_id; renderPickerOverlays(); });
-    btn.addEventListener("mouseleave", () => { pickerHoveredTid = null; renderPickerOverlays(); });
+    btn.addEventListener("mouseenter", () => { pickerHoveredTid = f.track_id; updatePickerOverlays(); });
+    btn.addEventListener("mouseleave", () => { pickerHoveredTid = null; updatePickerOverlays(); });
     facePickerGrid.append(btn);
   });
 
+  buildPickerOverlays();
   if (readyPlaceholder) readyPlaceholder.hidden = true;
   facePickerCard.hidden = false;
 
@@ -160,14 +190,14 @@ function showFacePicker(sessionId, faces) {
     // Ẩn thanh kéo thời gian mặc định trên video khi đang chọn khuôn mặt (tránh che mặt trên mobile)
     videoEl.controls = false;
     if (typeof faces[0].frame_time === "number" && Math.abs(videoEl.currentTime - faces[0].frame_time) > 0.15) {
-      videoEl.addEventListener("seeked", renderPickerOverlays, { once: true });
+      videoEl.addEventListener("seeked", updatePickerOverlays, { once: true });
       videoEl.currentTime = faces[0].frame_time;
     }
   }
   syncPickerUi();
 }
 
-window.addEventListener("resize", renderPickerOverlays);
+window.addEventListener("resize", updatePickerOverlays);
 if (videoEl) {
   videoEl.addEventListener("play", () => {
     if (pickerOverlays) pickerOverlays.hidden = true;
