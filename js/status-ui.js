@@ -7,6 +7,7 @@ import { setScanning } from "./video-picker.js";
 
 const readyPlaceholder = $("ready-placeholder");
 const statusCard = $("status-card");
+const statusBadge = $("status-badge"), spinner = $("spinner");
 const statusTitle = $("status-title"), statusSub = $("status-sub");
 const progress = $("progress"), progressBarFill = $("progress-bar-fill"), statusActions = $("status-actions");
 const statusError = $("status-error");
@@ -18,6 +19,8 @@ export function showStatus(title, sub, showCancel, progressPct) {
   readyPlaceholder.hidden = true;
   statusCard.hidden = false;
   hideError(statusError);
+  if (statusBadge) statusBadge.textContent = "Đang chạy";
+  if (spinner) spinner.hidden = false;
   statusTitle.textContent = title;
   statusSub.textContent = sub || "";
   progress.hidden = false;
@@ -40,6 +43,8 @@ export function hideStatus() {
 export function failStatus(title, msg) {
   progress.hidden = true;
   statusActions.hidden = true;
+  if (statusBadge) statusBadge.textContent = "Thất bại";
+  if (spinner) spinner.hidden = true;
   statusTitle.textContent = "Thất bại";
   statusSub.textContent = "";
   markScanning(false);
@@ -57,6 +62,8 @@ export function setSub(text) { statusSub.textContent = text; }
 export function markCanceled() {
   progress.hidden = true;
   statusActions.hidden = true;
+  if (statusBadge) statusBadge.textContent = "Đã hủy";
+  if (spinner) spinner.hidden = true;
   statusTitle.textContent = "Đã hủy yêu cầu";
   statusSub.textContent = "Bạn có thể phân tích lại bất cứ lúc nào.";
   markScanning(false);

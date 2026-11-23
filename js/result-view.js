@@ -10,6 +10,7 @@ let LOW = DEFAULT_LOW, HIGH = DEFAULT_HIGH;
 
 const readyPlaceholder = $("ready-placeholder");
 const resultCard = $("result");
+const scoreLabel = $("score-label");
 const probValue = $("prob-value"), gauge = $("gauge"), gaugeMarker = $("gauge-marker");
 const segLow = $("seg-low"), segMid = $("seg-mid"), segHigh = $("seg-high");
 const legendLow = $("legend-low"), legendMid = $("legend-mid"), legendHigh = $("legend-high");
@@ -33,6 +34,7 @@ const temporalGrid = $("temporal-grid");
 const videoEl = $("video");
 const faceOverlay = $("face-overlay-box");
 
+let lastResult = null;
 let activeFaces = [];
 let selectedFaceIdx = -1;
 let activeClips = [];
@@ -68,17 +70,32 @@ export function setThresholds(lo, hi) {
 }
 
 /* Chỉ lấy các trường server thực sự trả về, không tự bịa số liệu */
-function metricsOf(result) {
+function metricsOf(result, clipsOverride) {
   const list = [];
   if (typeof result.processing_time === "number") list.push({ label: "Thời gian xử lý", value: result.processing_time.toFixed(2) + "s" });
   if (Array.isArray(result.faces) && result.faces.length > 1) {
     list.push({ label: "Số khuôn mặt", value: result.faces.length + " người" });
   }
-  if (Array.isArray(result.clips) && result.clips.length > 0) {
-    const suspicious = result.clips.filter((c) => c.prob_fake >= HIGH).length;
-    list.push({ label: "Đoạn nghi vấn", value: suspicious + " / " + result.clips.length + " đoạn" });
+  const clips = Array.isArray(clipsOverride) ? clipsOverride : result.clips;
+  if (Array.isArray(clips) && clips.length > 0) {
+    const suspicious = clips.filter((c) => c.prob_fake >= HIGH).length;
+    list.push({ label: "Đoạn nghi vấn", value: suspicious + " / " + clips.length + " đoạn" });
   }
   return list;
+}
+
+function updateScoreDisplay(prob, labelSuffix) {
+  const pct = Math.max(0, Math.min(1, prob));
+  const level = levelOf(pct);
+  if (scoreLabel) {
+    scoreLabel.textContent = labelSuffix
+      ? ("Xác suất có dấu hiệu giả mạo (" + labelSuffix + ")")
+      : "Xác suất có dấu hiệu giả mạo";
+  }
+  probValue.textContent = fmtPct(pct);
+  probValue.style.color = "var(" + LEVEL_COLOR[level] + ")";
+  gaugeMarker.style.left = (pct * 100) + "%";
+  gauge.setAttribute("aria-label", "Xác suất có dấu hiệu giả mạo: " + fmtPct(pct));
 }
 
 function renderMetrics(list) {
@@ -106,14 +123,8 @@ export function renderResult(result) {
     typeof result.high === "number" ? result.high : HIGH
   );
 
-  const pct = Math.max(0, Math.min(1, p));
-  const level = levelOf(pct);
-
-  probValue.textContent = fmtPct(pct);
-  probValue.style.color = "var(" + LEVEL_COLOR[level] + ")";
-
-  gaugeMarker.style.left = (pct * 100) + "%";
-  gauge.setAttribute("aria-label", "Xác suất có dấu hiệu giả mạo: " + fmtPct(pct));
+  lastResult = result;
+  updateScoreDisplay(p, "");
 
   const metrics = metricsOf(result);
   renderMetrics(metrics);
@@ -281,6 +292,13 @@ function selectFace(idx) {
       btn.setAttribute("aria-selected", on ? "true" : "false");
     });
   }
+  if (typeof face.prob_fake === "number") {
+    const lbl = activeFaces.length > 1 ? (face.label || ("Khuôn mặt #" + (idx + 1))) : "";
+    updateScoreDisplay(face.prob_fake, lbl);
+  }
+  if (lastResult) {
+    renderMetrics(metricsOf(lastResult, face.clips));
+  }
   renderEvidence(face.clips);
 }
 
@@ -339,6 +357,7 @@ export function hideResult() {
   if (evidenceSection) evidenceSection.hidden = true;
   if (heatmapBlock) heatmapBlock.hidden = true;
   if (faceOverlay) faceOverlay.hidden = true;
+  lastResult = null;
   activeFaces = [];
   selectedFaceIdx = -1;
   activeClips = [];

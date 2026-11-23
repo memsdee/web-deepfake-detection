@@ -6,11 +6,15 @@ import {
   STATUS, MAX_MB, MAX_SECONDS, POLL_MS, CLIENT_TIMEOUT_MS, RESULT_TTL_MIN
 } from "./config.js";
 import { showStatus, failStatus, hideStatus, setProgressFromUpload } from "./status-ui.js";
-import { renderResult } from "./result-view.js";
+import { renderResult, hideResult } from "./result-view.js";
 import { hideError } from "./error-banner.js";
 
+const RETRY_429_MS = 3000;
+const MAX_RETRY_429 = 12;
+
 let onUploadingChange = () => { };
-let xhr = null, pollTimer = null, deadline = 0, jobId = null;
+let xhr = null, pollTimer = null, retryTimer = null, deadline = 0, jobId = null;
+let pendingFile = null, pendingErrorBox = null, retryCount = 0;
 
 export function setUploadingHook(fn) { onUploadingChange = fn; }
 
@@ -28,14 +32,29 @@ function abortUpload() {
   if (xhr) { xhr.abort(); xhr = null; }
 }
 
+function clearRetry() {
+  clearTimeout(retryTimer);
+  retryTimer = null;
+}
+
 export function submit(file, errorBox) {
-  if (xhr) return;
+  if (xhr || retryTimer) return;
+  pendingFile = file;
+  pendingErrorBox = errorBox;
+  retryCount = 0;
+  hideResult();
   hideError(errorBox);
+  sendUpload();
+}
+
+function sendUpload() {
+  if (!pendingFile) return;
+  clearRetry();
   onUploadingChange(true);
   showStatus("Đang tải video lên máy chủ…", "Vui lòng giữ kết nối ổn định.", true, 15);
 
   const form = new FormData();
-  form.append(UPLOAD_FIELD, file, file.name || "video.mp4");
+  form.append(UPLOAD_FIELD, pendingFile, pendingFile.name || "video.mp4");
 
   xhr = new XMLHttpRequest();
   xhr.open("POST", API_BASE + ENDPOINT_SUBMIT);
@@ -69,9 +88,13 @@ function onUploadResponse(x) {
 
   if (http >= 200 && http < 300) {
     if (data && typeof data === "object" && typeof data.job_id === "string") {
+      pendingFile = null;
+      pendingErrorBox = null;
+      retryCount = 0;
       jobId = data.job_id;
       deadline = Date.now() + CLIENT_TIMEOUT_MS;
-      showStatus("Đang xếp hàng chờ xử lý…", "Máy chủ tiếp nhận mã nhiệm vụ #" + jobId.slice(0, 8), true, 40);
+      const posText = typeof data.queue_position === "number" ? (" · Vị trí hàng chờ: #" + data.queue_position) : "";
+      showStatus("Đang xếp hàng chờ xử lý…", "Mã nhiệm vụ #" + jobId.slice(0, 8) + posText, true, 40);
       pollNow();
       return;
     }
@@ -79,6 +102,20 @@ function onUploadResponse(x) {
   } else if (http === 413) {
     failStatus("Video quá lớn", "Máy chủ từ chối vì tệp vượt " + MAX_MB + " MB hoặc dài hơn " + MAX_SECONDS + " giây.");
   } else if (http === 429) {
+    if (pendingFile && retryCount < MAX_RETRY_429) {
+      retryCount += 1;
+      showStatus(
+        "Hàng chờ đang đầy — đang tự động thử lại…",
+        "Sẽ tự gửi lại sau " + (RETRY_429_MS / 1000) + " giây (lần " + retryCount + "/" + MAX_RETRY_429 + ").",
+        true,
+        25
+      );
+      retryTimer = setTimeout(() => {
+        retryTimer = null;
+        sendUpload();
+      }, RETRY_429_MS);
+      return;
+    }
     failStatus("Máy chủ đang bận", serverMessage(x) || "Đang có video chờ xử lý. Vui lòng thử lại sau giây lát.");
   } else if (http === 404) {
     failStatus("Không tìm thấy API", "Địa chỉ API không đúng hoặc máy chủ chưa sẵn sàng.");
@@ -122,7 +159,8 @@ function onJobState(job) {
   if (job.status === STATUS.RUNNING) {
     showStatus("Đang phân tích khuôn mặt & kiểm tra giả mạo…", "Trích xuất đặc trưng không gian & tính toán xác suất.", true, 75);
   } else {
-    showStatus("Đang trong hàng đợi xử lý…", "Máy chủ đang xử lý video của bạn.", true, 50);
+    const pos = typeof job.queue_position === "number" ? ("Vị trí trong hàng chờ: #" + job.queue_position + ".") : "Máy chủ đang xếp hàng xử lý video của bạn.";
+    showStatus("Đang trong hàng đợi xử lý…", pos, true, 50);
   }
   if (Date.now() > deadline) { onPollStop("timeout"); return; }
   pollTimer = setTimeout(pollNow, POLL_MS);
@@ -148,10 +186,14 @@ export function stopPolling() {
 }
 
 export function cancel() {
-  const wasRunning = !!xhr || !!pollTimer;
+  const wasRunning = !!xhr || !!pollTimer || !!retryTimer;
   stopPolling();
+  clearRetry();
   abortUpload();
   onUploadingChange(false);
   jobId = null;
+  pendingFile = null;
+  pendingErrorBox = null;
+  retryCount = 0;
   return wasRunning;
 }
