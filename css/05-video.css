@@ -124,6 +124,11 @@
   white-space: nowrap;
 }
 
+.face-pick-overlay-tag.inside {
+  top: 2px;
+  left: 2px;
+}
+
 .face-pick-overlay.selected .face-pick-overlay-tag {
   background: #2563eb;
   color: #ffffff;

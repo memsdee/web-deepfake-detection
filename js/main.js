@@ -51,23 +51,28 @@ function renderPickerOverlays() {
   pickerFaces.forEach((f) => {
     if (!Array.isArray(f.face_box) || f.face_box.length !== 4) return;
     const [nx, ny, nw, nh] = f.face_box;
+    const topPx = oy + ny * rh;
     const on = pickerSelected.has(f.track_id);
     const hov = pickerHoveredTid === f.track_id;
     const box = el("button", "face-pick-overlay" + (on ? " selected" : "") + (hov ? " hovered" : ""));
     box.type = "button";
     box.style.left = (ox + nx * rw) + "px";
-    box.style.top = (oy + ny * rh) + "px";
+    box.style.top = topPx + "px";
     box.style.width = (nw * rw) + "px";
     box.style.height = (nh * rh) + "px";
     box.title = (f.label || ("Khuôn mặt #" + (f.track_id + 1))) + (on ? " (đang chọn)" : " (bấm để chọn)");
-    box.append(el("span", "face-pick-overlay-tag", "#" + (f.track_id + 1) + (on ? " ✓" : "")));
-    box.addEventListener("click", () => {
+    const tag = el("span", "face-pick-overlay-tag" + (topPx < 24 ? " inside" : ""), "#" + (f.track_id + 1) + (on ? " ✓" : ""));
+    box.append(tag);
+    box.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      pickerHoveredTid = null;
       if (pickerSelected.has(f.track_id)) pickerSelected.delete(f.track_id);
       else pickerSelected.add(f.track_id);
       syncPickerUi();
     });
-    box.addEventListener("mouseenter", () => { pickerHoveredTid = f.track_id; syncPickerUi(); });
-    box.addEventListener("mouseleave", () => { pickerHoveredTid = null; syncPickerUi(); });
+    box.addEventListener("mouseenter", () => { pickerHoveredTid = f.track_id; renderPickerOverlays(); });
+    box.addEventListener("mouseleave", () => { pickerHoveredTid = null; renderPickerOverlays(); });
     pickerOverlays.append(box);
   });
   pickerOverlays.hidden = false;
@@ -101,6 +106,7 @@ function hideFacePicker() {
     pickerOverlays.hidden = true;
     pickerOverlays.replaceChildren();
   }
+  if (videoEl) videoEl.controls = true;
   pickerSessionId = null;
   pickerFaces = [];
   pickerSelected.clear();
@@ -149,9 +155,11 @@ function showFacePicker(sessionId, faces) {
   if (readyPlaceholder) readyPlaceholder.hidden = true;
   facePickerCard.hidden = false;
 
-  if (videoEl && videoEl.src && typeof faces[0].frame_time === "number") {
+  if (videoEl && videoEl.src) {
     videoEl.pause();
-    if (Math.abs(videoEl.currentTime - faces[0].frame_time) > 0.15) {
+    // Ẩn thanh kéo thời gian mặc định trên video khi đang chọn khuôn mặt (tránh che mặt trên mobile)
+    videoEl.controls = false;
+    if (typeof faces[0].frame_time === "number" && Math.abs(videoEl.currentTime - faces[0].frame_time) > 0.15) {
       videoEl.addEventListener("seeked", renderPickerOverlays, { once: true });
       videoEl.currentTime = faces[0].frame_time;
     }
