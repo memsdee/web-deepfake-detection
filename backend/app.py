@@ -30,7 +30,7 @@ import validation
 from inference import InferenceEngine, NoFaceError
 
 # ---------------------------------------------------------------- cấu hình
-LOW, HIGH = 0.35, 0.55              # ngưỡng tạm, phải hiệu chỉnh trên val split
+LOW, HIGH = 0.76, 0.94              # hiệu chỉnh theo Chow's Reject Option (α=5%) & Youden t*=0.888 trên val split (1.050 video)
 MAX_QUEUED = 3                      # job ĐANG CHỜ tối đa (không tính đang xử lý)
 QUEUE_FULL_RETRY_AFTER = 30         # giây, header Retry-After khi 429
 RESULT_TTL_SECONDS = 10 * 60        # giữ kết quả 10 phút sau khi job kết thúc

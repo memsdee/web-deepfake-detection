@@ -2,6 +2,7 @@
 *.pth
 *.pt
 *.ckpt
+test_videos/
 __pycache__/
 *.py[cod]
 .venv/

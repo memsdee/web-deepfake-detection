@@ -12,8 +12,8 @@ export const HEALTH_POLL_MS = 15000;             // chu kỳ hỏi trạng thái
 export const STATUS = { QUEUED: "queued", RUNNING: "running", DONE: "done", ERROR: "error" };
 
 /* Ngưỡng & giới hạn (khớp UI: tối đa 15 giây, 60 MB) */
-export const DEFAULT_LOW = 0.35;
-export const DEFAULT_HIGH = 0.55;
+export const DEFAULT_LOW = 0.76;
+export const DEFAULT_HIGH = 0.94;
 export const MAX_MB = 60;
 export const MAX_SECONDS = 15;
 export const POLL_MS = 2000;

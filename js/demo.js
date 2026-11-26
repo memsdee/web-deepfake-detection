@@ -102,8 +102,8 @@ export function initDemo() {
       ];
       renderResult({
         p_fake: 0.887,
-        low: 0.35,
-        high: 0.55,
+        low: 0.76,
+        high: 0.94,
         processing_time: 4.38,
         clips: clips1,
         faces,
